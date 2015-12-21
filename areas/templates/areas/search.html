@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Check a location</title>
+    <style>
+		html, body {
+		height: 100%;
+		margin: 0;
+		padding: 0;
+		}
+		#map {
+		height: 90%;
+		}
+    </style>
+    <script src="//code.jquery.com/jquery-1.11.3.min.js"></script>
+  </head>
+  <body>
+    <h3>Click on the map to check whether your location is being served from our app.</h3>
+    <div id="result"></div>
+    <div id="map"></div>
+    <script>
+
+// In the following example, markers appear when the user clicks on the map.
+// The markers are stored in an array.
+// The user can then click an option to hide, show or delete the markers.
+var map;
+var markers = [];
+var successImg = 'http://maps.google.com/mapfiles/ms/icons/green-dot.png';
+var failImg = 'http://maps.google.com/mapfiles/ms/icons/purple-dot.png';
+
+function initMap() {
+  var sanFransisco = {lat: 37.7749295, lng: -122.4194155};
+
+  map = new google.maps.Map(document.getElementById('map'), {
+    zoom: 8,
+    center: sanFransisco,
+    // mapTypeId: google.maps.MapTypeId.TERRAIN
+  });
+
+  // This event listener will call addMarker() when the map is clicked.
+  map.addListener('click', function(event) {
+    addMarker(event.latLng);
+  });
+
+}
+
+// Adds a marker to the map and pushes it to the array.
+function addMarker(location) {
+  var marker = new google.maps.Marker({
+    position: location,
+    map: map
+  });
+  markers.push(marker);
+  // Calls server to find whether this point belongs to a serviced area.
+  $.ajax({
+	  url  : 'search/',
+	  type : 'GET',
+	  data : {"lat" : location.lat(),"lng" : location.lng()}
+	}).done(function(data, statusText, xhr){
+	  var status = xhr.status; //200 for success or 204 for failure
+	  if(status == 200){
+	  	// Change colour of marker
+	  	marker.setIcon(successImg);
+	  	// Show flash message
+	  	$('#result').html("<p>This spot is served by our application</p>");
+	  	$('#result').css('background-color', 'green');
+	  	$('#result').show("slow");
+	  	$('#result').hide(3000);
+	  }
+	  else if(status == 204){
+	  	// Change colour of marker
+	  	marker.setIcon(failImg);
+	  	// Show flash message
+	  	$('#result').html("<p>Unfortunatelly we do not serve this spot</p>");
+	  	$('#result').css('background-color', 'red');
+	  	$('#result').show("slow");
+	  	$('#result').hide(3000);
+	  }
+	});
+}
+    </script>
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=&signed_in=true&callback=initMap">
+    </script>
+  </body>
+</html>

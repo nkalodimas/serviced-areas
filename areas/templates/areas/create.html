@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Submit an area</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <script src="//code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 80%;
+        width: 80%;
+      }
+    </style>
+  </head>
+  <body>
+  	<div>
+  		{% if most_recent_area %}
+		<h3>Last area submitted:</h3>
+	    <ul>
+	    {% for point in most_recent_area.poly.coords.0 %}
+	        <li>{{ point.0 }},{{ point.1 }}</li>
+	    {% endfor %}
+	    </ul>
+		{% else %}
+	    	<p>No submitted areas are available.</p>
+		{% endif %}
+		<h3>Please draw the area you want to submit and click submit button</h3>
+  	</div>
+  	<div>
+  		<button type="button" class="btn btn-success" id="submitBtn" >Submit</button>
+  		<button type="button" class="btn btn-default" id="clearBtn" >Clear</button>
+  	</div>
+  	<div id="message"></div>
+  	</br>
+  	</body>
+    <div id="map"></div>
+    <script>
+    	var polygon = undefined;
+		function initMap() {
+			var map = new google.maps.Map(document.getElementById('map'), {
+				center: {lat: 37.7749295, lng: -122.4194155},
+				zoom: 8
+			});
+
+			var drawingManager = new google.maps.drawing.DrawingManager({
+				drawingMode: google.maps.drawing.OverlayType.MARKER,
+				drawingControl: true,
+				drawingControlOptions: {
+				  position: google.maps.ControlPosition.TOP_LEFT,
+				  drawingModes: [
+				    /*google.maps.drawing.OverlayType.MARKER,
+				    google.maps.drawing.OverlayType.CIRCLE,*/
+				    google.maps.drawing.OverlayType.POLYGON,
+				    /*google.maps.drawing.OverlayType.POLYLINE,
+				    google.maps.drawing.OverlayType.RECTANGLE*/
+				  ]
+				},
+			    polygonOptions: {
+			      fillColor: 'LightGreen',
+			      fillOpacity: 0.3,
+			      strokeWeight: 5,
+			      clickable: false,
+			      draggable: true,
+			      geodesic: true,
+			      editable: true,
+			      zIndex: 1
+			    }
+		  		});
+	  			drawingManager.setMap(map);
+
+	  			// This event listener is triggered when a polygone is completed.
+	  			google.maps.event.addListener(drawingManager, 'polygoncomplete', function(complete_polygon) {
+				    polygon = complete_polygon;
+				});
+
+	  			$("#submitBtn").click(function(){
+	  				if( polygon != undefined ){
+	  					// Extract points from polygon
+	  					var points = [];
+	  					var paths = polygon.getPath().getArray();
+	  					$.each(paths, function( index, value ) {
+							  points.push({"lng" : value.lng(), "lat" : value.lat()});
+						});
+						// Add the first point in the end, in order the polygon to form a closed linestring
+						points.push({"lng" : paths[0].lng(), "lat" : paths[0].lat()});
+	  					$.ajax({
+							url  : 'submit/',
+							type : 'POST',
+							data : JSON.stringify({"points" : points })
+							}).done(function(data, statusText, xhr){
+							var status = xhr.status; //201 for success or 400 for failure
+							if(status == 201){
+								// Show message
+								$('#message').html("<p>The area was succesfully submitted</p>").css('background-color', 'green');
+								google.maps.event.trigger(map, 'resize');
+								polygon = undefined;
+							}
+							else if(status == 400){
+								$('#message').html(xhr.statusText);
+							}
+							});
+	  				}
+	  				else{
+	  					// Show message
+						$('#message').html("<p>Please draw a complete polygon</p>");
+	  				}
+	  			});
+	  			$("#clearBtn").click(function(){
+	  				google.maps.event.trigger(map, 'resize');
+	  				polygon = undefined;
+	  			});
+		}
+
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=&signed_in=true&libraries=drawing&callback=initMap"
+         async defer>
+    </script>
+  </body>
+</html>
